@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { Header, Status, Section, Button } from "prateek-design-system";
+import { Status, Button } from "prateek-design-system";
+import { AppHeader } from "@/components/AppHeader";
 import { createClient } from "@/lib/supabase/server";
 import { Compose } from "@/components/Compose";
 import { ChannelManager } from "@/components/ChannelManager";
@@ -39,25 +40,48 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
 
   return (
     <>
-      <div className="pk-hero">
-        <h1 className="pk-name" style={{ fontSize: 32, lineHeight: "40px" }}>Hello, {first}</h1>
+      <div className="ex-hero">
+        <h1 className="ex-title">Hello, {first}</h1>
         <Status>
           {!conns?.length ? "Connect Slack to start" : !hasTargets ? "Add a channel to start" : `Ready to send to ${targets!.length} channel${targets!.length === 1 ? "" : "s"}`}
         </Status>
       </div>
 
-      <div className="pk-sections">
-        {note ? <p className="ex-note" role="status">{note}</p> : null}
+      {note ? <p className="ex-note" role="status" style={{ marginBottom: "var(--space-8)" }}>{note}</p> : null}
 
+      <div className="ex-grid">
         {hasTargets ? (
-          <Section label="Send">
+          <section className="ex-panel">
+            <h2 className="ex-panel-title">Send</h2>
             <Compose targets={targets!.map((t) => ({ id: t.id, label: t.label, sentBefore: sentTo.has(t.id) }))} />
-          </Section>
+          </section>
         ) : null}
 
-        <Section label="Channels">
+        {hasTargets ? (
+          <section className="ex-panel">
+            <h2 className="ex-panel-title">Recent</h2>
+            {recent?.length ? (
+              <div className="ex-list">
+                {recent.map((r) => (
+                  <div key={r.id}>
+                    <div className="ex-row-between">
+                      <span className="t-body">{r.target_label}</span>
+                      <span className="ex-meta">{r.status === "failed" ? "failed · " : ""}{when(r.created_at)}</span>
+                    </div>
+                    <p className="t-body" style={{ margin: "var(--space-1) 0 0", color: "var(--ink-muted)" }}>{r.text}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="t-body" style={{ margin: 0, color: "var(--ink-muted)" }}>Nothing sent yet. Every message you send shows up here.</p>
+            )}
+          </section>
+        ) : null}
+
+        <section className="ex-panel ex-span">
+          <h2 className="ex-panel-title">Channels</h2>
           {!conns?.length ? (
-            <div className="ex-block" style={{ gap: "var(--space-4)" }}>
+            <div className="ex-block" style={{ gap: "var(--space-4)", maxWidth: 480 }}>
               <p className="t-body" style={{ margin: 0 }}>Connect Slack so I can post your excuses as you, in the channel you choose.</p>
               <div className="pk-row"><Button variant="solid" href="/api/connect/slack/start">Connect Slack</Button></div>
             </div>
@@ -75,23 +99,7 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
               <div><Button variant="text" href="/api/connect/slack/start">Connect another workspace</Button></div>
             </div>
           )}
-        </Section>
-
-        {recent?.length ? (
-          <Section label="Recent">
-            <div className="ex-list">
-              {recent.map((r) => (
-                <div key={r.id}>
-                  <div className="ex-row-between">
-                    <span className="t-body">{r.target_label}</span>
-                    <span className="ex-meta">{r.status === "failed" ? "failed · " : ""}{when(r.created_at)}</span>
-                  </div>
-                  <p className="t-body" style={{ margin: "var(--space-1) 0 0", color: "var(--ink-muted)" }}>{r.text}</p>
-                </div>
-              ))}
-            </div>
-          </Section>
-        ) : null}
+        </section>
       </div>
     </>
   );
@@ -99,9 +107,11 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
 
 export default function Dashboard({ searchParams }: PageProps<"/dashboard">) {
   return (
-    <div className="pk-page">
-      <Header name="Excuse generator" links={[{ label: "Dashboard", href: "/dashboard", active: true }, { label: "Settings", href: "/settings" }]} />
-      <Suspense fallback={null}><DashboardBody searchParams={searchParams} /></Suspense>
-    </div>
+    <>
+      <AppHeader links={[{ label: "Dashboard", href: "/dashboard", active: true }, { label: "Settings", href: "/settings" }]} />
+      <main className="ex-main">
+        <Suspense fallback={null}><DashboardBody searchParams={searchParams} /></Suspense>
+      </main>
+    </>
   );
 }

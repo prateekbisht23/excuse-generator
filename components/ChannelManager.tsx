@@ -68,9 +68,9 @@ export function ChannelManager({ connectionId, targets }: { connectionId: string
 
   return (
     <div className="ex-block" style={{ gap: "var(--space-4)" }}>
-      <div className="ex-list">
+      <div className="ex-channels">
         {targets.map((t) => (
-          <div key={t.id} className="ex-block" style={{ gap: "var(--space-3)" }}>
+          <div key={t.id} className="ex-chan">
             <div className="ex-row-between">
               <span className="t-body">{t.label}</span>
               <span className="pk-row">

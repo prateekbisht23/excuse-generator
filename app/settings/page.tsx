@@ -1,10 +1,10 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { Header, Section } from "prateek-design-system";
 import { createClient } from "@/lib/supabase/server";
 import { AiKeyForm } from "@/components/AiKeyForm";
 import { SignOutButton } from "@/components/SignOutButton";
+import { AppHeader } from "@/components/AppHeader";
 
 async function SettingsBody() {
   await connection();
@@ -14,19 +14,19 @@ async function SettingsBody() {
   const { data: key } = await supabase.from("ai_keys").select("provider").maybeSingle();
   return (
     <>
-      <div className="pk-hero">
-        <h1 className="pk-name" style={{ fontSize: 32, lineHeight: "40px" }}>Settings</h1>
-      </div>
-      <div className="pk-sections">
-        <Section label="Account">
+      <div className="ex-hero"><h1 className="ex-title">Settings</h1></div>
+      <div className="ex-block" style={{ gap: "var(--space-12)" }}>
+        <section className="ex-panel">
+          <h2 className="ex-panel-title">Account</h2>
           <dl style={{ margin: 0 }}>
             <div className="ex-fact"><dt>Email</dt><dd>{user.email}</dd></div>
           </dl>
           <div style={{ marginTop: "var(--space-3)" }}><SignOutButton /></div>
-        </Section>
-        <Section label="AI">
+        </section>
+        <section className="ex-panel">
+          <h2 className="ex-panel-title">AI</h2>
           <AiKeyForm current={key?.provider ?? null} />
-        </Section>
+        </section>
       </div>
     </>
   );
@@ -34,9 +34,11 @@ async function SettingsBody() {
 
 export default function Settings() {
   return (
-    <div className="pk-page">
-      <Header name="Excuse generator" links={[{ label: "Dashboard", href: "/dashboard" }, { label: "Settings", href: "/settings", active: true }]} />
-      <Suspense fallback={null}><SettingsBody /></Suspense>
-    </div>
+    <>
+      <AppHeader links={[{ label: "Dashboard", href: "/dashboard" }, { label: "Settings", href: "/settings", active: true }]} />
+      <main className="ex-main narrow">
+        <Suspense fallback={null}><SettingsBody /></Suspense>
+      </main>
+    </>
   );
 }

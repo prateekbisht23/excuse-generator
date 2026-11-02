@@ -1,9 +1,10 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { Header, Status, Section } from "prateek-design-system";
+import { Status } from "prateek-design-system";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { AppHeader } from "@/components/AppHeader";
 
 // Signed-in visitors skip the landing page. The cookie read sits inside Suspense
 // so the rest of the page can still be prerendered.
@@ -15,33 +16,38 @@ async function RedirectIfSignedIn() {
   return null;
 }
 
+const STEPS = [
+  ["Connect", "Link Slack, and pick the channel where you post your leave and work-from-home updates."],
+  ["Write", "Each excuse is written fresh, in your own voice, learned from what you have posted before."],
+  ["Send", "Send it now, or schedule it. Every message is logged, so you can see what went out and when."],
+];
+
 export default function Home() {
   return (
-    <div className="pk-page">
+    <>
       <Suspense fallback={null}><RedirectIfSignedIn /></Suspense>
-      <Header name="Excuse generator" links={[{ label: "Sign in", href: "/login" }]} />
-
-      <div className="pk-hero">
-        <h1 className="pk-name">Excuse generator</h1>
-        <Status>Making WFH updates more interesting</Status>
-        <p className="pk-lede">
-          A random, funny excuse for your leave and work-from-home posts. Send one now, or schedule it for later.
-        </p>
-      </div>
-
-      <div className="pk-row" style={{ marginTop: "var(--space-8)" }}>
-        <GoogleSignInButton />
-      </div>
-
-      <div className="pk-sections">
-        <Section label="How it works">
-          <div className="ex-stack">
-            <p className="t-body" style={{ margin: 0 }}>Connect Slack or email, and pick a message template for each.</p>
-            <p className="t-body" style={{ margin: 0 }}>The excuse is written in your own style, learned from what you have posted before.</p>
-            <p className="t-body" style={{ margin: 0 }}>Every message is logged, so you can see what you sent and when.</p>
+      <AppHeader links={[{ label: "Sign in", href: "/login" }]} />
+      <main className="ex-main">
+        <div className="ex-hero" style={{ paddingTop: "var(--space-12)" }}>
+          <h1 className="ex-display">A better reason to work from home.</h1>
+          <Status>Making leave updates more interesting</Status>
+          <p className="ex-lede">
+            Random, funny excuses for your leave and work-from-home posts, sent to Slack as you. Send one now, or schedule it for later.
+          </p>
+          <div className="pk-row" style={{ marginTop: "var(--space-6)" }}><GoogleSignInButton /></div>
+        </div>
+        <div className="ex-panel">
+          <h2 className="ex-panel-title">How it works</h2>
+          <div className="ex-three">
+            {STEPS.map(([title, body]) => (
+              <div key={title}>
+                <p className="t-body ex-step" style={{ fontWeight: 500 }}>{title}</p>
+                <p className="t-body" style={{ margin: 0, color: "var(--ink-muted)" }}>{body}</p>
+              </div>
+            ))}
           </div>
-        </Section>
-      </div>
-    </div>
+        </div>
+      </main>
+    </>
   );
 }

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { Header } from "prateek-design-system";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { AppHeader } from "@/components/AppHeader";
 
 async function LoginError({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
   const { error } = await searchParams;
@@ -9,16 +9,18 @@ async function LoginError({ searchParams }: { searchParams: PageProps<"/login">[
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
-    <div className="pk-page">
-      <Header name="Excuse generator" links={[]} />
-      <div className="pk-hero">
-        <h1 className="pk-name" style={{ fontSize: 32, lineHeight: "40px" }}>Sign in</h1>
-        <p className="pk-lede">Use your Google account. I only read your name and email.</p>
-      </div>
-      <div className="ex-stack" style={{ marginTop: "var(--space-8)" }}>
-        <div className="pk-row"><GoogleSignInButton /></div>
-        <Suspense fallback={null}><LoginError searchParams={searchParams} /></Suspense>
-      </div>
-    </div>
+    <>
+      <AppHeader links={[]} />
+      <main className="ex-main tiny" style={{ paddingTop: "var(--space-16)" }}>
+        <div className="ex-hero" style={{ paddingBottom: "var(--space-8)" }}>
+          <h1 className="ex-title">Sign in</h1>
+          <p className="ex-lede">Use your Google account. I only read your name and email.</p>
+        </div>
+        <div className="ex-block">
+          <div className="pk-row"><GoogleSignInButton /></div>
+          <Suspense fallback={null}><LoginError searchParams={searchParams} /></Suspense>
+        </div>
+      </main>
+    </>
   );
 }
