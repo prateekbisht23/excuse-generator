@@ -24,3 +24,10 @@ h1, h2, h3 { text-wrap: balance; }
 .ex-fact { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
 .ex-fact dt { color: var(--ink-muted); font-size: 13px; }
 .ex-fact dd { margin: 0; font-family: var(--font-mono); font-size: 12px; line-height: 20px; text-align: right; overflow-wrap: anywhere; }
+
+.ex-select {
+  font: inherit; font-size: 13px; color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+  padding: 6px var(--space-3); min-width: 0; max-width: 100%;
+}
+.ex-select:focus-visible { outline: none; box-shadow: var(--focus-ring); }
