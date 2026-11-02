@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Status, Button } from "prateek-design-system";
 import { AppHeader } from "@/components/AppHeader";
+import { appNav } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/server";
 import { Compose } from "@/components/Compose";
 import { ChannelManager } from "@/components/ChannelManager";
@@ -30,7 +31,7 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
     supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
     supabase.from("connections").select("id, label").eq("provider", "slack").order("created_at"),
     supabase.from("targets").select("id, connection_id, label, templates, persona_updated_at").order("created_at"),
-    supabase.from("excuse_log").select("id, target_id, target_label, text, status, created_at").order("created_at", { ascending: false }).limit(6),
+    supabase.from("excuse_log").select("id, target_id, target_label, text, status, schedule_id, created_at").order("created_at", { ascending: false }).limit(6),
   ]);
 
   const first = (profile?.display_name ?? "there").split(" ")[0];
@@ -66,7 +67,7 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
                   <div key={r.id}>
                     <div className="ex-row-between">
                       <span className="t-body">{r.target_label}</span>
-                      <span className="ex-meta">{r.status === "failed" ? "failed · " : ""}{when(r.created_at)}</span>
+                      <span className="ex-meta">{r.schedule_id ? "scheduled · " : ""}{r.status !== "sent" ? `${r.status} · ` : ""}{when(r.created_at)}</span>
                     </div>
                     <p className="t-body" style={{ margin: "var(--space-1) 0 0", color: "var(--ink-muted)" }}>{r.text}</p>
                   </div>
@@ -108,7 +109,7 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
 export default function Dashboard({ searchParams }: PageProps<"/dashboard">) {
   return (
     <>
-      <AppHeader links={[{ label: "Dashboard", href: "/dashboard", active: true }, { label: "Settings", href: "/settings" }]} />
+      <AppHeader links={appNav("dashboard")} />
       <main className="ex-main">
         <Suspense fallback={null}><DashboardBody searchParams={searchParams} /></Suspense>
       </main>

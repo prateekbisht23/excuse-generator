@@ -1,7 +1,7 @@
 import { decrypt } from "@/lib/crypto";
-import type { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-type Supa = Awaited<ReturnType<typeof createClient>>;
+type Supa = SupabaseClient;
 
 /** Decrypts the Slack user token of a connection the signed-in user owns (RLS enforces ownership). */
 export async function slackTokenFor(supabase: Supa, connectionId: string): Promise<string | null> {

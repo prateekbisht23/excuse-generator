@@ -1,14 +1,14 @@
 import { decrypt } from "@/lib/crypto";
-import type { createClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Brain } from "@/lib/excuses/generate";
 import type { Provider } from "@/lib/ai";
 
-type Supa = Awaited<ReturnType<typeof createClient>>;
+type Supa = SupabaseClient;
 const HOURLY_LIMIT = 20;
 
 /** The user's own key if they added one, otherwise the shared Gemini key within a per-user hourly limit. */
 export async function resolveBrain(supabase: Supa, userId: string): Promise<{ brain: Brain | null; note?: string }> {
-  const { data: own } = await supabase.from("ai_keys").select("provider, encrypted_key").maybeSingle();
+  const { data: own } = await supabase.from("ai_keys").select("provider, encrypted_key").eq("user_id", userId).maybeSingle();
   if (own) return { brain: { provider: own.provider as Provider, key: decrypt(own.encrypted_key) } };
 
   const shared = process.env.GEMINI_API_KEY;

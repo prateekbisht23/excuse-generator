@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AiKeyForm } from "@/components/AiKeyForm";
 import { SignOutButton } from "@/components/SignOutButton";
 import { AppHeader } from "@/components/AppHeader";
+import { appNav } from "@/lib/nav";
 
 async function SettingsBody() {
   await connection();
@@ -35,7 +36,7 @@ async function SettingsBody() {
 export default function Settings() {
   return (
     <>
-      <AppHeader links={[{ label: "Dashboard", href: "/dashboard" }, { label: "Settings", href: "/settings", active: true }]} />
+      <AppHeader links={appNav("settings")} />
       <main className="ex-main narrow">
         <Suspense fallback={null}><SettingsBody /></Suspense>
       </main>
