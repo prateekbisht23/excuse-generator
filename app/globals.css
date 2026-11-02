@@ -31,3 +31,28 @@ h1, h2, h3 { text-wrap: balance; }
   padding: 6px var(--space-3); min-width: 0; max-width: 100%;
 }
 .ex-select:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* Compose and forms */
+.ex-label { color: var(--ink-muted); font-size: 13px; line-height: 20px; margin: 0 0 var(--space-2); display: block; }
+.ex-field {
+  width: 100%; font: inherit; font-size: 15px; line-height: 24px; color: var(--ink); background: var(--paper-raised);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); padding: var(--space-3);
+  transition: border-color var(--dur-fast);
+}
+.ex-field:hover { border-color: var(--line-strong); }
+.ex-field:focus-visible { outline: none; box-shadow: var(--focus-ring); border-color: var(--ink); }
+textarea.ex-field { resize: vertical; min-height: 96px; }
+.ex-seg { display: flex; gap: var(--space-6); flex-wrap: wrap; }
+.ex-seg button {
+  all: unset; cursor: pointer; font-size: 15px; line-height: 24px; color: var(--ink-muted);
+  padding: 2px 0; border-bottom: 1px solid transparent; transition: color var(--dur-fast);
+}
+.ex-seg button:hover { color: var(--ink); }
+.ex-seg button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.ex-seg button:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 3px; }
+.ex-block { display: flex; flex-direction: column; gap: var(--space-6); }
+.ex-row-between { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); flex-wrap: wrap; }
+.ex-list > * { padding: var(--space-4) 0; border-bottom: 1px solid var(--line); }
+.ex-list > *:first-child { padding-top: 0; }
+.ex-meta { font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+@media (prefers-reduced-motion: reduce) { .ex-field, .ex-seg button { transition: none; } }

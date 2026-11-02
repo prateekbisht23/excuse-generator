@@ -5,6 +5,12 @@ export const REASONS: { value: Reason; label: string }[] = [
   { value: "late", label: "Running late" },
 ];
 
+export const DEFAULT_TEMPLATES: Record<Reason, string> = {
+  wfh: "I'll be working from home today. {excuse}",
+  leave: "I'll be on leave today. {excuse}",
+  late: "I'll be running late today. {excuse}",
+};
+
 // Curated, harmless fallbacks. Used when no AI is available.
 const BANK: Record<Reason, string[]> = {
   wfh: [

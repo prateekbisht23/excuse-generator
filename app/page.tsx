@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { Header, Status, Section } from "prateek-design-system";
 import { createClient } from "@/lib/supabase/server";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
@@ -7,6 +8,7 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 // Signed-in visitors skip the landing page. The cookie read sits inside Suspense
 // so the rest of the page can still be prerendered.
 async function RedirectIfSignedIn() {
+  await connection();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect("/dashboard");
