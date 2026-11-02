@@ -30,7 +30,7 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
   const { data: slackConns } = await supabase
     .from("connections").select("id, label").eq("provider", "slack").order("created_at");
   const { data: targets } = await supabase
-    .from("targets").select("id, connection_id, label, template").order("created_at");
+    .from("targets").select("id, connection_id, label, template, persona_updated_at").order("created_at");
 
   return (
     <>
@@ -45,7 +45,7 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
             {(slackConns ?? []).map((c) => (
               <div key={c.id} className="ex-stack" style={{ gap: "var(--space-3)" }}>
                 <p className="t-body" style={{ margin: 0 }}>Slack <span className="t-meta" style={{ color: "var(--ink-muted)" }}>· {c.label}</span></p>
-                <SlackTargets connectionId={c.id} targets={(targets ?? []).filter((t) => t.connection_id === c.id)} />
+                <SlackTargets connectionId={c.id} targets={(targets ?? []).filter((t) => t.connection_id === c.id).map((t) => ({ id: t.id, label: t.label, template: t.template, learned: Boolean(t.persona_updated_at) }))} />
               </div>
             ))}
             <div><Button variant={slackConns?.length ? "text" : "solid"} href="/api/connect/slack/start">{slackConns?.length ? "Connect another workspace" : "Connect Slack"}</Button></div>
@@ -66,7 +66,7 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
 export default function Dashboard({ searchParams }: PageProps<"/dashboard">) {
   return (
     <div className="pk-page">
-      <Header name="Excuse generator" links={[{ label: "Dashboard", href: "/dashboard", active: true }]} />
+      <Header name="Excuse generator" links={[{ label: "Dashboard", href: "/dashboard", active: true }, { label: "Settings", href: "/settings" }]} />
       <Suspense fallback={null}><DashboardBody searchParams={searchParams} /></Suspense>
     </div>
   );

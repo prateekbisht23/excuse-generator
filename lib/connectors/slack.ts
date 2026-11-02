@@ -41,3 +41,22 @@ export async function listChannels(token: string): Promise<SlackChannel[]> {
 export async function sendMessage(token: string, channel: string, text: string) {
   return slack<{ ts: string; channel: string }>("chat.postMessage", token, { channel, text });
 }
+
+/** The user's own recent plain messages in a channel, newest first. Used to learn their style. */
+export async function fetchOwnMessages(token: string, channel: string, slackUserId: string, want = 30): Promise<string[]> {
+  const out: string[] = [];
+  let cursor = "";
+  for (let page = 0; page < 5 && out.length < want; page++) {
+    const r = await slack<{
+      messages: { user?: string; text?: string; subtype?: string }[];
+      response_metadata?: { next_cursor?: string };
+    }>("conversations.history", token, { channel, limit: "200", ...(cursor ? { cursor } : {}) });
+    for (const m of r.messages) {
+      if (m.user === slackUserId && !m.subtype && m.text && m.text.length > 3) out.push(m.text.slice(0, 300));
+      if (out.length >= want) break;
+    }
+    cursor = r.response_metadata?.next_cursor ?? "";
+    if (!cursor) break;
+  }
+  return out;
+}

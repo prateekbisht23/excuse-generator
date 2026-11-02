@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "prateek-design-system";
 
-type Target = { id: string; label: string; template: string };
+type Target = { id: string; label: string; template: string; learned: boolean };
+type Preview = { text: string; excuse: string; source: "ai" | "bank"; note?: string };
+const REASONS = [["wfh", "Working from home"], ["leave", "On leave"], ["late", "Running late"]] as const;
 type Channel = { id: string; name: string; isPrivate: boolean };
 
 export function SlackTargets({ connectionId, targets }: { connectionId: string; targets: Target[] }) {
@@ -13,6 +15,8 @@ export function SlackTargets({ connectionId, targets }: { connectionId: string; 
   const [selected, setSelected] = useState("");
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState<string>("wfh");
+  const [previews, setPreviews] = useState<Record<string, Preview>>({});
 
   async function load() {
     setBusy(true); setNote(null);
@@ -47,12 +51,53 @@ export function SlackTargets({ connectionId, targets }: { connectionId: string; 
     setNote(res.ok ? "Test message sent." : `Could not send: ${json.error}`);
   }
 
+  async function preview(id: string) {
+    setBusy(true); setNote(null);
+    const res = await fetch("/api/excuses/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetId: id, reason, avoid: previews[id] ? [previews[id].excuse] : [] }),
+    });
+    const json = await res.json();
+    setBusy(false);
+    if (!res.ok) return setNote(`Could not generate: ${json.error}`);
+    setPreviews((p) => ({ ...p, [id]: json }));
+  }
+
+  async function learn(id: string) {
+    setBusy(true); setNote(null);
+    const res = await fetch(`/api/targets/${id}/persona`, { method: "POST" });
+    const json = await res.json();
+    setBusy(false);
+    if (!res.ok) return setNote(json.error);
+    setNote(`Learned your style from ${json.samples} messages: ${json.persona.tone}.`);
+    router.refresh();
+  }
+
   return (
     <div className="ex-stack" style={{ gap: "var(--space-3)" }}>
+      {targets.length ? (
+        <select className="ex-select" value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Reason" style={{ alignSelf: "flex-start" }}>
+          {REASONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
+      ) : null}
       {targets.map((t) => (
-        <div key={t.id} className="ex-fact">
-          <dt style={{ color: "var(--ink)" }}>{t.label}</dt>
-          <dd><Button variant="text" onClick={() => test(t.id)} disabled={busy}>Send test</Button></dd>
+        <div key={t.id} style={{ borderBottom: "1px solid var(--line)", paddingBottom: "var(--space-3)" }}>
+          <div className="pk-row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+            <span className="t-body">{t.label} <span className="t-meta" style={{ color: "var(--ink-muted)" }}>· {t.learned ? "style learned" : "no style yet"}</span></span>
+            <span className="pk-row">
+              <Button variant="text" onClick={() => preview(t.id)} disabled={busy}>Preview excuse</Button>
+              <Button variant="text" onClick={() => learn(t.id)} disabled={busy}>{t.learned ? "Relearn style" : "Learn my style"}</Button>
+              <Button variant="text" onClick={() => test(t.id)} disabled={busy}>Send test</Button>
+            </span>
+          </div>
+          {previews[t.id] ? (
+            <p className="t-body" style={{ margin: "var(--space-2) 0 0" }}>
+              {previews[t.id].text}
+              <span className="t-meta" style={{ color: "var(--ink-muted)" }}> · {previews[t.id].source === "ai" ? "written by AI" : "from the built-in list"}</span>
+              {previews[t.id].note ? <span className="ex-note" style={{ display: "block" }}>{previews[t.id].note}</span> : null}
+            </p>
+          ) : null}
         </div>
       ))}
       {channels ? (
