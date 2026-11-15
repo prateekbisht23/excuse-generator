@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "prateek-design-system";
+import { Select } from "@/components/Select";
+import { destinationLine, providerName } from "@/lib/providers";
 
-export type ComposeTarget = { id: string; label: string; sentBefore: boolean };
+export type ComposeTarget = { id: string; label: string; provider: string; account: string | null; sentBefore: boolean };
 const REASONS = [["wfh", "Working from home"], ["leave", "On leave"], ["late", "Running late"]] as const;
 
 export function Compose({ targets }: { targets: ComposeTarget[] }) {
@@ -69,10 +71,15 @@ export function Compose({ targets }: { targets: ComposeTarget[] }) {
   return (
     <div className="ex-block">
       <div>
-        <label className="ex-label" htmlFor="ex-target">Where</label>
-        <select id="ex-target" className="ex-field" value={targetId} onChange={(e) => pickTarget(e.target.value)}>
-          {targets.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-        </select>
+        <label className="ex-label" htmlFor="ex-target">Send to</label>
+        <Select
+          id="ex-target" value={targetId} onChange={pickTarget}
+          options={targets.map((t) => ({
+            value: t.id, label: t.label, hint: providerName(t.provider),
+            group: `${providerName(t.provider)}${t.account ? ` · ${t.account}` : ""}`,
+          }))}
+        />
+        {target ? <p className="ex-hint">→ {destinationLine(target.provider, target.label, target.account)}</p> : null}
       </div>
 
       <div>
@@ -98,7 +105,7 @@ export function Compose({ targets }: { targets: ComposeTarget[] }) {
           onChange={(e) => { setText(e.target.value); setSource("manual"); setConfirming(false); }}
         />
         <p className="ex-meta" style={{ margin: "var(--space-2) 0 0" }}>
-          {source === "ai" ? "written by AI" : source === "bank" ? "from the built-in list" : "edited by you"}
+          {source === "ai" ? "Written by AI" : source === "bank" ? "From the built-in list" : "Edited by you"}
         </p>
       </div>
 

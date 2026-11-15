@@ -1,28 +1,31 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { Status, Button } from "prateek-design-system";
+import { Status } from "prateek-design-system";
 import { AppHeader } from "@/components/AppHeader";
 import { appNav } from "@/lib/nav";
 import { createClient } from "@/lib/supabase/server";
 import { Compose } from "@/components/Compose";
-import { ChannelManager } from "@/components/ChannelManager";
+import { ConnectedApps } from "@/components/ConnectedApps";
+import { providerName } from "@/lib/providers";
 
-const SLACK_NOTES: Record<string, string> = {
-  connected: "Slack connected. Add a channel to start.",
-  denied: "Slack access was not granted.",
-  state: "That Slack sign-in expired. Try again.",
-  exchange: "Slack did not accept the sign-in. Try again.",
-  store: "Slack connected, but I could not save it.",
-};
-
-const GMAIL_NOTES: Record<string, string> = {
-  connected: "Gmail connected. Add a recipient to start.",
-  denied: "Gmail access was not granted.",
-  state: "That Google sign-in expired. Try again.",
-  exchange: "Google did not accept the sign-in. Try again.",
-  scope: "Gmail sending permission was not granted. Tick the Gmail box on the Google screen.",
-  store: "Gmail connected, but I could not save it.",
+const NOTES: Record<string, Record<string, string>> = {
+  slack: {
+    connected: "Slack connected. Add a channel below to start.",
+    denied: "Slack access was not granted.",
+    state: "That Slack sign-in expired. Try again.",
+    exchange: "Slack did not accept the sign-in. Try again.",
+    store: "Slack connected, but I could not save it.",
+  },
+  gmail: {
+    connected: "Gmail connected. Add a recipient below to start.",
+    denied: "Gmail access was not granted.",
+    state: "That Google sign-in expired. Try again.",
+    exchange: "Google did not accept the sign-in. Try again.",
+    scope: "Gmail sending permission was not granted. Tick the Gmail box on the Google screen.",
+    store: "Gmail connected, but I could not save it.",
+  },
 };
 
 function when(iso: string) {
@@ -31,7 +34,7 @@ function when(iso: string) {
 
 async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashboard">["searchParams"] }) {
   await connection();
-  const { slack, gmail } = await searchParams;
+  const sp = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -39,47 +42,77 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
   const [{ data: profile }, { data: conns }, { data: targets }, { data: recent }] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
     supabase.from("connections").select("id, label, provider").order("created_at"),
-    supabase.from("targets").select("id, connection_id, label, templates, persona_updated_at").order("created_at"),
-    supabase.from("excuse_log").select("id, target_id, target_label, text, status, schedule_id, created_at").order("created_at", { ascending: false }).limit(6),
+    supabase.from("targets").select("id, connection_id, kind, label, templates, persona_updated_at").order("created_at"),
+    supabase.from("excuse_log").select("id, target_id, target_label, text, status, schedule_id, created_at").order("created_at", { ascending: false }).limit(5),
   ]);
 
   const first = (profile?.display_name ?? "there").split(" ")[0];
+  const connList = conns ?? [];
+  const targetList = targets ?? [];
+  const connById = new Map(connList.map((c) => [c.id, c]));
   const sentTo = new Set((recent ?? []).filter((r) => r.status === "sent").map((r) => r.target_id));
-  const hasTargets = (targets ?? []).length > 0;
-  const note = typeof slack === "string" ? SLACK_NOTES[slack] : typeof gmail === "string" ? GMAIL_NOTES[gmail] : null;
-  const hasGmail = (conns ?? []).some((c) => c.provider === "gmail");
+  const providerOf = new Map(targetList.map((t) => [t.id, connById.get(t.connection_id)?.provider ?? ""]));
+  const note = (["slack", "gmail"] as const).map((k) => (typeof sp[k] === "string" ? NOTES[k][sp[k] as string] : null)).find(Boolean) ?? null;
+
+  const step = !connList.length ? 1 : !targetList.length ? 2 : 3;
+  const connectedNames = [...new Set(connList.map((c) => providerName(c.provider)))];
+  const status = step === 1 ? "Connect Slack or Gmail to start"
+    : step === 2 ? "Add a channel or recipient to start"
+    : `Sending through ${connectedNames.join(" and ")} · ${targetList.length} destination${targetList.length === 1 ? "" : "s"}`;
 
   return (
     <>
       <div className="ex-hero">
         <h1 className="ex-title">Hello, {first}</h1>
-        <Status>
-          {!conns?.length ? "Connect Slack or Gmail to start" : !hasTargets ? "Add a channel or recipient to start" : `Ready to send to ${targets!.length} place${targets!.length === 1 ? "" : "s"}`}
-        </Status>
+        <Status>{status}</Status>
       </div>
 
       {note ? <p className="ex-note" role="status" style={{ marginBottom: "var(--space-8)" }}>{note}</p> : null}
 
+      {step < 3 ? (
+        <section className="ex-panel" style={{ marginBottom: "var(--space-12)" }}>
+          <h2 className="ex-panel-title">Get started</h2>
+          <ol className="ex-steps">
+            <li className={step > 1 ? "done" : ""}><span className="n">01</span><span className="t-body">Connect an app</span><span className="ex-note">Slack posts in a channel as you. Gmail emails from your address.</span></li>
+            <li className={step > 2 ? "done" : ""}><span className="n">02</span><span className="t-body">Pick where it goes</span><span className="ex-note">Add a Slack channel or an email recipient under Connected apps.</span></li>
+            <li><span className="n">03</span><span className="t-body">Send or schedule</span><span className="ex-note">Write an excuse here and send it now, or set it up on Schedules.</span></li>
+          </ol>
+        </section>
+      ) : null}
+
       <div className="ex-grid">
-        {hasTargets ? (
+        {step === 3 ? (
           <section className="ex-panel">
-            <h2 className="ex-panel-title">Send</h2>
-            <Compose targets={targets!.map((t) => ({ id: t.id, label: t.label, sentBefore: sentTo.has(t.id) }))} />
+            <h2 className="ex-panel-title">Send an excuse</h2>
+            <Compose
+              targets={targetList.map((t) => {
+                const c = connById.get(t.connection_id);
+                return { id: t.id, label: t.label, provider: c?.provider ?? "slack", account: c?.label ?? null, sentBefore: sentTo.has(t.id) };
+              })}
+            />
           </section>
         ) : null}
 
-        {hasTargets ? (
+        {step === 3 ? (
           <section className="ex-panel">
-            <h2 className="ex-panel-title">Recent</h2>
+            <div className="ex-row-between" style={{ marginBottom: "var(--space-6)" }}>
+              <h2 className="ex-panel-title" style={{ margin: 0 }}>Recent</h2>
+              <Link href="/history" className="ex-note" style={{ color: "var(--ink-muted)" }}>All history →</Link>
+            </div>
             {recent?.length ? (
               <div className="ex-list">
                 {recent.map((r) => (
                   <div key={r.id}>
-                    <div className="ex-row-between">
+                    <div className="ex-row-between" style={{ alignItems: "center", marginBottom: "var(--space-1)" }}>
                       <span className="t-body">{r.target_label}</span>
-                      <span className="ex-meta">{r.schedule_id ? "scheduled · " : ""}{r.status !== "sent" ? `${r.status} · ` : ""}{when(r.created_at)}</span>
+                      <span className="ex-sched-meta">
+                        {r.status !== "sent" ? <span className="ex-tag" style={{ color: "var(--marigold-ink)" }}>{r.status === "failed" ? "Failed" : "Skipped"}</span> : null}
+                        {r.schedule_id ? <span className="ex-tag">Scheduled</span> : null}
+                        {providerOf.get(r.target_id) ? <span className="ex-tag">{providerName(providerOf.get(r.target_id)!)}</span> : null}
+                        <span className="ex-meta">{when(r.created_at)}</span>
+                      </span>
                     </div>
-                    <p className="t-body" style={{ margin: "var(--space-1) 0 0", color: "var(--ink-muted)" }}>{r.text}</p>
+                    <p className="t-body" style={{ margin: 0, color: "var(--ink-muted)" }}>{r.text}</p>
                   </div>
                 ))}
               </div>
@@ -89,34 +122,12 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
           </section>
         ) : null}
 
-        <section className="ex-panel ex-span">
-          <h2 className="ex-panel-title">Where to send</h2>
-          {!conns?.length ? (
-            <div className="ex-block" style={{ gap: "var(--space-4)", maxWidth: 480 }}>
-              <p className="t-body" style={{ margin: 0 }}>Connect Slack so I can post your excuses as you, in the channel you choose, or Gmail to email them.</p>
-              <div className="pk-row">
-                <Button variant="solid" href="/api/connect/slack/start">Connect Slack</Button>
-                <Button variant="ghost" href="/api/connect/gmail/start">Connect Gmail</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="ex-block">
-              {conns.map((c) => (
-                <div key={c.id} className="ex-block" style={{ gap: "var(--space-4)" }}>
-                  <p className="ex-meta" style={{ margin: 0 }}>{c.provider} · {c.label}</p>
-                  <ChannelManager
-                    connectionId={c.id}
-                    provider={c.provider === "gmail" ? "gmail" : "slack"}
-                    targets={(targets ?? []).filter((t) => t.connection_id === c.id).map((t) => ({ id: t.id, label: t.label, templates: t.templates as Record<string, string>, learned: Boolean(t.persona_updated_at) }))}
-                  />
-                </div>
-              ))}
-              <div className="pk-row">
-                <Button variant="text" href="/api/connect/slack/start">Connect a Slack workspace</Button>
-                <Button variant="text" href="/api/connect/gmail/start">{hasGmail ? "Connect another Gmail" : "Connect Gmail"}</Button>
-              </div>
-            </div>
-          )}
+        <section className="ex-panel ex-span" id="apps">
+          <div className="ex-row-between" style={{ marginBottom: "var(--space-6)" }}>
+            <h2 className="ex-panel-title" style={{ margin: 0 }}>Connected apps and destinations</h2>
+            <Link href="/settings" className="ex-note" style={{ color: "var(--ink-muted)" }}>Manage in settings →</Link>
+          </div>
+          <ConnectedApps conns={connList} targets={targetList} />
         </section>
       </div>
     </>
