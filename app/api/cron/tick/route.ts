@@ -1,8 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { slackTokenFor } from "@/lib/connections";
-import { sendMessage } from "@/lib/connectors/slack";
+import { deliver } from "@/lib/delivery";
 import { resolveBrain } from "@/lib/ai/resolve";
 import { applyTemplate, generateExcuse, type Persona } from "@/lib/excuses/generate";
 import { DEFAULT_TEMPLATES, type Reason } from "@/lib/excuses/bank";
@@ -53,9 +52,7 @@ export async function POST(request: Request) {
           const gen = await generateExcuse(brain, s.reason, (target.persona as Persona | null) ?? null);
           source = gen.source;
           text = applyTemplate((target.templates as Record<string, string> | null)?.[s.reason] ?? DEFAULT_TEMPLATES[s.reason], gen.excuse);
-          const token = await slackTokenFor(admin, target.connection_id);
-          if (!token) throw new Error("Slack connection not found");
-          await sendMessage(token, target.external_id, text);
+          await deliver(admin, target.connection_id, target.external_id, text, s.reason);
         } catch (e) {
           outcome = "failed"; errMsg = (e as Error).message;
         }

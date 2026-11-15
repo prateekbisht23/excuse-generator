@@ -16,7 +16,10 @@ export async function POST(_req: Request, ctx: RouteContext<"/api/targets/[id]/p
     .from("targets").select("connection_id, external_id").eq("id", id).maybeSingle();
   if (!target) return NextResponse.json({ error: "not found" }, { status: 404 });
   const { data: conn } = await supabase
-    .from("connections").select("external_account").eq("id", target.connection_id).maybeSingle();
+    .from("connections").select("external_account, provider").eq("id", target.connection_id).maybeSingle();
+  if (conn?.provider !== "slack") {
+    return NextResponse.json({ error: "Style learning reads your Slack messages, so it only works for Slack channels." }, { status: 422 });
+  }
   const token = await slackTokenFor(supabase, target.connection_id);
   if (!conn || !token) return NextResponse.json({ error: "connection not found" }, { status: 404 });
 

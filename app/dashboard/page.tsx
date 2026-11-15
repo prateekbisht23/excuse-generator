@@ -16,20 +16,29 @@ const SLACK_NOTES: Record<string, string> = {
   store: "Slack connected, but I could not save it.",
 };
 
+const GMAIL_NOTES: Record<string, string> = {
+  connected: "Gmail connected. Add a recipient to start.",
+  denied: "Gmail access was not granted.",
+  state: "That Google sign-in expired. Try again.",
+  exchange: "Google did not accept the sign-in. Try again.",
+  scope: "Gmail sending permission was not granted. Tick the Gmail box on the Google screen.",
+  store: "Gmail connected, but I could not save it.",
+};
+
 function when(iso: string) {
   return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashboard">["searchParams"] }) {
   await connection();
-  const { slack } = await searchParams;
+  const { slack, gmail } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const [{ data: profile }, { data: conns }, { data: targets }, { data: recent }] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
-    supabase.from("connections").select("id, label").eq("provider", "slack").order("created_at"),
+    supabase.from("connections").select("id, label, provider").order("created_at"),
     supabase.from("targets").select("id, connection_id, label, templates, persona_updated_at").order("created_at"),
     supabase.from("excuse_log").select("id, target_id, target_label, text, status, schedule_id, created_at").order("created_at", { ascending: false }).limit(6),
   ]);
@@ -37,14 +46,15 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
   const first = (profile?.display_name ?? "there").split(" ")[0];
   const sentTo = new Set((recent ?? []).filter((r) => r.status === "sent").map((r) => r.target_id));
   const hasTargets = (targets ?? []).length > 0;
-  const note = typeof slack === "string" ? SLACK_NOTES[slack] : null;
+  const note = typeof slack === "string" ? SLACK_NOTES[slack] : typeof gmail === "string" ? GMAIL_NOTES[gmail] : null;
+  const hasGmail = (conns ?? []).some((c) => c.provider === "gmail");
 
   return (
     <>
       <div className="ex-hero">
         <h1 className="ex-title">Hello, {first}</h1>
         <Status>
-          {!conns?.length ? "Connect Slack to start" : !hasTargets ? "Add a channel to start" : `Ready to send to ${targets!.length} channel${targets!.length === 1 ? "" : "s"}`}
+          {!conns?.length ? "Connect Slack or Gmail to start" : !hasTargets ? "Add a channel or recipient to start" : `Ready to send to ${targets!.length} place${targets!.length === 1 ? "" : "s"}`}
         </Status>
       </div>
 
@@ -80,24 +90,31 @@ async function DashboardBody({ searchParams }: { searchParams: PageProps<"/dashb
         ) : null}
 
         <section className="ex-panel ex-span">
-          <h2 className="ex-panel-title">Channels</h2>
+          <h2 className="ex-panel-title">Where to send</h2>
           {!conns?.length ? (
             <div className="ex-block" style={{ gap: "var(--space-4)", maxWidth: 480 }}>
-              <p className="t-body" style={{ margin: 0 }}>Connect Slack so I can post your excuses as you, in the channel you choose.</p>
-              <div className="pk-row"><Button variant="solid" href="/api/connect/slack/start">Connect Slack</Button></div>
+              <p className="t-body" style={{ margin: 0 }}>Connect Slack so I can post your excuses as you, in the channel you choose, or Gmail to email them.</p>
+              <div className="pk-row">
+                <Button variant="solid" href="/api/connect/slack/start">Connect Slack</Button>
+                <Button variant="ghost" href="/api/connect/gmail/start">Connect Gmail</Button>
+              </div>
             </div>
           ) : (
             <div className="ex-block">
               {conns.map((c) => (
                 <div key={c.id} className="ex-block" style={{ gap: "var(--space-4)" }}>
-                  <p className="ex-meta" style={{ margin: 0 }}>slack · {c.label}</p>
+                  <p className="ex-meta" style={{ margin: 0 }}>{c.provider} · {c.label}</p>
                   <ChannelManager
                     connectionId={c.id}
+                    provider={c.provider === "gmail" ? "gmail" : "slack"}
                     targets={(targets ?? []).filter((t) => t.connection_id === c.id).map((t) => ({ id: t.id, label: t.label, templates: t.templates as Record<string, string>, learned: Boolean(t.persona_updated_at) }))}
                   />
                 </div>
               ))}
-              <div><Button variant="text" href="/api/connect/slack/start">Connect another workspace</Button></div>
+              <div className="pk-row">
+                <Button variant="text" href="/api/connect/slack/start">Connect a Slack workspace</Button>
+                <Button variant="text" href="/api/connect/gmail/start">{hasGmail ? "Connect another Gmail" : "Connect Gmail"}</Button>
+              </div>
             </div>
           )}
         </section>

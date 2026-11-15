@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { EMAIL_RE } from "@/lib/connectors/gmail";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -12,6 +13,10 @@ export async function POST(request: Request) {
   if (!body.connectionId || !body.externalId || !body.label) {
     return NextResponse.json({ error: "connectionId, externalId and label are required" }, { status: 400 });
   }
+  const kind = body.kind === "dm" ? "dm" : body.kind === "email" ? "email" : "channel";
+  if (kind === "email" && !EMAIL_RE.test(body.externalId)) {
+    return NextResponse.json({ error: "That does not look like an email address." }, { status: 400 });
+  }
   const template = (body.template ?? "").trim().slice(0, 500);
   const { data, error } = await supabase
     .from("targets")
@@ -19,7 +24,7 @@ export async function POST(request: Request) {
       {
         user_id: user.id,
         connection_id: body.connectionId,
-        kind: body.kind === "dm" ? "dm" : "channel",
+        kind,
         external_id: body.externalId,
         label: body.label,
         ...(template ? { template } : {}),

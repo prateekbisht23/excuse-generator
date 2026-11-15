@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { slackTokenFor } from "@/lib/connections";
-import { sendMessage } from "@/lib/connectors/slack";
+import { deliver } from "@/lib/delivery";
 import { REASONS } from "@/lib/excuses/bank";
 
 export async function POST(request: Request) {
@@ -25,10 +24,8 @@ export async function POST(request: Request) {
       user_id: user.id, target_id: body.targetId, target_label: target.label, reason, text, source, status, error: error ?? null,
     });
 
-  const token = await slackTokenFor(supabase, target.connection_id);
-  if (!token) return NextResponse.json({ error: "connection not found" }, { status: 404 });
   try {
-    await sendMessage(token, target.external_id, text);
+    await deliver(supabase, target.connection_id, target.external_id, text, reason);
     await log("sent");
     return NextResponse.json({ ok: true });
   } catch (e) {

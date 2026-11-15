@@ -8,7 +8,10 @@ export type ManagedTarget = { id: string; label: string; templates: Record<strin
 const REASONS = [["wfh", "Working from home"], ["leave", "On leave"], ["late", "Running late"]] as const;
 type Channel = { id: string; name: string; isPrivate: boolean };
 
-export function ChannelManager({ connectionId, targets }: { connectionId: string; targets: ManagedTarget[] }) {
+export function ChannelManager({ connectionId, targets, provider = "slack" }: { connectionId: string; targets: ManagedTarget[]; provider?: "slack" | "gmail" }) {
+  const isEmail = provider === "gmail";
+  const [email, setEmail] = useState("");
+  const [adding, setAdding] = useState(false);
   const router = useRouter();
   const [channels, setChannels] = useState<Channel[] | null>(null);
   const [selected, setSelected] = useState("");
@@ -39,6 +42,20 @@ export function ChannelManager({ connectionId, targets }: { connectionId: string
     setBusy(null);
     if (!res.ok) return say("add", "Could not save that channel.");
     setChannels(null); router.refresh();
+  }
+
+  async function addEmail() {
+    const address = email.trim();
+    if (!address) return;
+    setBusy("add"); say("add", "");
+    const res = await fetch("/api/targets", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ connectionId, externalId: address, label: address, kind: "email" }),
+    });
+    const json = await res.json();
+    setBusy(null);
+    if (!res.ok) return say("add", json.error ?? "Could not save that address.");
+    setEmail(""); setAdding(false); router.refresh();
   }
 
   async function saveTemplate(id: string, reason: string, value: string, original: string) {
@@ -74,9 +91,11 @@ export function ChannelManager({ connectionId, targets }: { connectionId: string
             <div className="ex-row-between">
               <span className="t-body">{t.label}</span>
               <span className="pk-row">
-                <Button variant="text" onClick={() => learn(t.id)} disabled={busy === t.id}>
-                  {busy === t.id ? "Reading" : t.learned ? "Relearn my style" : "Learn my style"}
-                </Button>
+                {isEmail ? null : (
+                  <Button variant="text" onClick={() => learn(t.id)} disabled={busy === t.id}>
+                    {busy === t.id ? "Reading" : t.learned ? "Relearn my style" : "Learn my style"}
+                  </Button>
+                )}
                 <Button variant="text" onClick={() => remove(t.id)} disabled={busy === t.id}>Remove</Button>
               </span>
             </div>
@@ -93,13 +112,26 @@ export function ChannelManager({ connectionId, targets }: { connectionId: string
                 </div>
               ))}
             </div>
-            <p className="ex-meta" style={{ margin: 0 }}>{t.learned ? "writes in your style" : "no style learned yet"}</p>
+            {isEmail ? null : <p className="ex-meta" style={{ margin: 0 }}>{t.learned ? "writes in your style" : "no style learned yet"}</p>}
             {notes[t.id] ? <p className="ex-note" role="status">{notes[t.id]}</p> : null}
           </div>
         ))}
       </div>
 
-      {channels && channels.length ? (
+      {isEmail ? (
+        adding ? (
+          <div className="pk-row" style={{ flexWrap: "wrap" }}>
+            <input
+              type="email" className="ex-field" style={{ flex: 1, minWidth: 180, width: "auto" }} placeholder="manager@company.com"
+              value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addEmail()} aria-label="Email address" autoFocus
+            />
+            <Button variant="solid" onClick={addEmail} disabled={busy === "add" || !email.trim()}>Add recipient</Button>
+            <Button variant="text" onClick={() => { setAdding(false); setEmail(""); }}>Cancel</Button>
+          </div>
+        ) : (
+          <div><Button variant="ghost" onClick={() => setAdding(true)}>Add a recipient</Button></div>
+        )
+      ) : channels && channels.length ? (
         <div className="pk-row" style={{ flexWrap: "wrap" }}>
           <select className="ex-field" style={{ flex: 1, minWidth: 180, width: "auto" }} value={selected} onChange={(e) => setSelected(e.target.value)} aria-label="Channel">
             {channels.map((c) => <option key={c.id} value={c.id}>{c.isPrivate ? "private · " : "#"}{c.name}</option>)}
